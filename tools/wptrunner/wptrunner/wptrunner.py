@@ -2,6 +2,7 @@
 
 import json
 import os
+import signal
 import sys
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -245,6 +246,7 @@ def run_test_iteration(test_status, test_loader, test_source_kwargs, test_source
                       run_test_kwargs["restart_on_new_group"],
                       recording=recording) as manager_group:
         try:
+            handle_interrupt_signals()
             manager_group.run(tests_to_run)
         except KeyboardInterrupt:
             logger.critical("Main thread got signal")
@@ -260,6 +262,14 @@ def run_test_iteration(test_status, test_loader, test_source_kwargs, test_source
         test_status.unexpected_tests &= manager_group.unexpected_tests()
 
     return True
+
+def handle_interrupt_signals():
+    def SigtermHandler(_signum, _unused_frame):
+        raise KeyboardInterrupt()
+    if sys.platform == "win32":
+        signal.signal(signal.SIGBREAK, SigtermHandler)
+    else:
+        signal.signal(signal.SIGTERM, SigtermHandler)
 
 
 def evaluate_runs(test_status, run_test_kwargs):
